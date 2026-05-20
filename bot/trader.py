@@ -235,6 +235,8 @@ class Trader:
                 "enableRateLimit": True,
                 "options": {
                     "defaultType": "future",
+                    "defaultSubType": "linear",
+                    "fetchMarkets": {"types": ["linear"]},
                     "adjustForTimeDifference": True,
                 },
             }
