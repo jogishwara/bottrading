@@ -34,7 +34,7 @@ def run_backtest(trader: Trader, strategy: EMACrossoverStrategy) -> None:
         initial_balance=settings.backtest_initial_balance,
         risk_per_trade=settings.risk_per_trade,
         stop_loss_pct=settings.stop_loss_pct,
-        take_profit_pct=settings.take_profit_pct,
+        take_profit_pct=settings.effective_take_profit_pct,
         fee_rate=settings.backtest_fee_rate,
     )
     result = backtester.run(df)

@@ -106,9 +106,11 @@ The bot opens one futures position at a time. A BUY signal opens or maintains a 
 Risk controls are configured through `.env`:
 
 - `RISK_PER_TRADE`: fraction of account balance risked per entry
+- `TRADE_MARGIN_USDT`: fixed margin per trade. Set `1000` to use about 1000 USDT margin per entry. Set `0` to use risk-based sizing.
 - `MAX_DAILY_LOSS`: daily realized loss threshold that blocks new entries
 - `STOP_LOSS_PCT`: local stop loss percentage
-- `TAKE_PROFIT_PCT`: local take profit percentage
+- `TAKE_PROFIT_PCT`: local take profit percentage as price movement
+- `TAKE_PROFIT_ON_MARGIN_PCT`: optional margin-based take profit. Set `0.10` for roughly 10% profit on margin. The bot converts it to price movement by dividing by `LEVERAGE`.
 - `LEVERAGE`: futures leverage setting
 - `COOLDOWN_SECONDS`: delay after entries and exits
 - `MAX_NOTIONAL_PCT`: caps position notional relative to available leveraged balance
@@ -142,3 +144,21 @@ Stop loss and take profit are monitored locally by the running bot. For real pro
 - Keep `USE_SANDBOX=true`.
 - Demo liquidity and fills may differ from real markets.
 - This is educational software, not financial advice.
+
+## Example: 1000 USDT Margin and 10% TP
+
+For 50x leverage, 10% profit on margin is only about a 0.2% price move:
+
+```text
+10% / 50 = 0.2%
+```
+
+Use:
+
+```env
+LEVERAGE=50
+TRADE_MARGIN_USDT=1000
+TAKE_PROFIT_ON_MARGIN_PCT=0.10
+```
+
+With this setting, the bot calculates the correct take-profit price from leverage. You do not need to manually set `TAKE_PROFIT_PCT=0.002`.

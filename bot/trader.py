@@ -523,6 +523,21 @@ class Trader:
         return order
 
     def calculate_order_amount(self, balance: float, price: float) -> float:
+        if self.settings.trade_margin_usdt > 0:
+            if balance < self.settings.trade_margin_usdt:
+                self.logger.warning(
+                    "Order skipped: balance %.2f is below TRADE_MARGIN_USDT %.2f",
+                    balance,
+                    self.settings.trade_margin_usdt,
+                )
+                return 0.0
+
+            notional = self.settings.trade_margin_usdt * self.settings.leverage
+            amount = notional / price
+            if self.exchange and not self.settings.is_paper:
+                amount = float(self.exchange.amount_to_precision(self.settings.symbol, amount))
+            return amount
+
         risk_amount = balance * self.settings.risk_per_trade
         stop_distance = price * self.settings.stop_loss_pct
         risk_based_amount = risk_amount / stop_distance
@@ -562,8 +577,8 @@ class Trader:
 
     def _take_profit_price(self, side: str, entry_price: float) -> float:
         if side == "long":
-            return entry_price * (1 + self.settings.take_profit_pct)
-        return entry_price * (1 - self.settings.take_profit_pct)
+            return entry_price * (1 + self.settings.effective_take_profit_pct)
+        return entry_price * (1 - self.settings.effective_take_profit_pct)
 
     @staticmethod
     def _calculate_pnl(position: Position, exit_price: float) -> float:

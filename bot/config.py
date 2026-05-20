@@ -58,9 +58,11 @@ class Settings:
 
     leverage: int
     risk_per_trade: float
+    trade_margin_usdt: float
     max_daily_loss: float
     stop_loss_pct: float
     take_profit_pct: float
+    take_profit_on_margin_pct: float
     cooldown_seconds: int
     max_notional_pct: float
     min_trade_usdt: float
@@ -99,9 +101,11 @@ class Settings:
             slow_ema=_get_int("SLOW_EMA", 21),
             leverage=_get_int("LEVERAGE", 2),
             risk_per_trade=_get_float("RISK_PER_TRADE", 0.01),
+            trade_margin_usdt=_get_float("TRADE_MARGIN_USDT", 0.0),
             max_daily_loss=_get_float("MAX_DAILY_LOSS", 0.03),
             stop_loss_pct=_get_float("STOP_LOSS_PCT", 0.01),
             take_profit_pct=_get_float("TAKE_PROFIT_PCT", 0.02),
+            take_profit_on_margin_pct=_get_float("TAKE_PROFIT_ON_MARGIN_PCT", 0.0),
             cooldown_seconds=_get_int("COOLDOWN_SECONDS", 300),
             max_notional_pct=_get_float("MAX_NOTIONAL_PCT", 0.95),
             min_trade_usdt=_get_float("MIN_TRADE_USDT", 10.0),
@@ -146,6 +150,12 @@ class Settings:
     def daily_loss_limit_amount(self) -> float:
         return self.paper_initial_balance * self.max_daily_loss
 
+    @property
+    def effective_take_profit_pct(self) -> float:
+        if self.take_profit_on_margin_pct > 0:
+            return self.take_profit_on_margin_pct / self.leverage
+        return self.take_profit_pct
+
     def validate(self) -> None:
         if self.mode not in {"live", "paper", "backtest"}:
             raise ValueError("MODE must be one of: live, paper, backtest")
@@ -168,11 +178,17 @@ class Settings:
         if not 0 < self.risk_per_trade <= 1:
             raise ValueError("RISK_PER_TRADE must be between 0 and 1.")
 
+        if self.trade_margin_usdt < 0:
+            raise ValueError("TRADE_MARGIN_USDT must be 0 or greater.")
+
         if not 0 < self.max_daily_loss <= 1:
             raise ValueError("MAX_DAILY_LOSS must be between 0 and 1.")
 
         if self.stop_loss_pct <= 0 or self.take_profit_pct <= 0:
             raise ValueError("STOP_LOSS_PCT and TAKE_PROFIT_PCT must be positive.")
+
+        if self.take_profit_on_margin_pct < 0:
+            raise ValueError("TAKE_PROFIT_ON_MARGIN_PCT must be 0 or greater.")
 
         if self.leverage < 1:
             raise ValueError("LEVERAGE must be at least 1.")
