@@ -1,0 +1,5 @@
+2026-05-12 09:15:00 | INFO | binance_futures_testnet_bot | Connected to Binance Futures DEMO environment.
+2026-05-12 09:15:01 | INFO | binance_futures_testnet_bot | Bot started in PAPER mode for BTC/USDT:USDT.
+2026-05-12 09:15:16 | INFO | binance_futures_testnet_bot | STATUS | price=64250.10 | signal=HOLD | position=none | balance=1000.00 | total_trades=0 | winrate=0.00% | pnl=0.00 | drawdown=0.00%
+2026-05-12 09:18:31 | INFO | binance_futures_testnet_bot | ENTRY | LONG | amount=0.029571 | price=64250.10 | sl=63607.60 | tp=65535.10
+2026-05-12 09:27:46 | INFO | binance_futures_testnet_bot | EXIT | LONG | reason=take_profit | entry=64250.10 | exit=65535.10 | pnl=37.99 | total_trades=1 | winrate=100.00% | pnl=37.99 | drawdown=0.00%
