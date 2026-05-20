@@ -73,6 +73,99 @@ class TelegramNotifier:
             self.logger.error("Telegram notification failed: %s", exc)
 
 
+class TelegramCommandListener:
+    """Polls Telegram commands and replies to the configured chat."""
+
+    def __init__(
+        self,
+        settings: Settings,
+        logger: logging.Logger,
+        notifier: TelegramNotifier,
+        status_provider: Callable[[], str],
+    ):
+        self.settings = settings
+        self.logger = logger
+        self.notifier = notifier
+        self.status_provider = status_provider
+        self.enabled = notifier.enabled
+        self.offset: int | None = None
+        self._running = threading.Event()
+        self._thread: threading.Thread | None = None
+
+    def start(self) -> None:
+        if not self.enabled:
+            return
+
+        self._prime_offset()
+        self._running.set()
+        self._thread = threading.Thread(target=self._run, name="telegram-commands", daemon=True)
+        self._thread.start()
+        self.logger.info("Telegram command listener started. Available commands: /status, /help")
+
+    def stop(self) -> None:
+        self._running.clear()
+        if self._thread and self._thread.is_alive():
+            self._thread.join(timeout=5)
+
+    def _prime_offset(self) -> None:
+        try:
+            updates = self._get_updates(timeout=0)
+            if updates:
+                self.offset = max(int(update["update_id"]) for update in updates) + 1
+        except Exception as exc:
+            self.logger.warning("Telegram command listener could not prime offset: %s", exc)
+
+    def _run(self) -> None:
+        while self._running.is_set():
+            try:
+                updates = self._get_updates(timeout=20)
+                for update in updates:
+                    self.offset = int(update["update_id"]) + 1
+                    self._handle_update(update)
+            except requests.RequestException as exc:
+                self.logger.error("Telegram command polling failed: %s", exc)
+                time.sleep(5)
+            except Exception as exc:
+                self.logger.exception("Telegram command handling failed: %s", exc)
+                time.sleep(5)
+
+    def _get_updates(self, timeout: int) -> list[dict[str, Any]]:
+        url = f"https://api.telegram.org/bot{self.settings.telegram_token}/getUpdates"
+        params: dict[str, Any] = {
+            "timeout": timeout,
+            "allowed_updates": json.dumps(["message"]),
+        }
+        if self.offset is not None:
+            params["offset"] = self.offset
+
+        response = requests.get(url, params=params, timeout=timeout + 10)
+        response.raise_for_status()
+        payload = response.json()
+        if not payload.get("ok"):
+            raise RuntimeError(f"Telegram getUpdates failed: {payload}")
+        return list(payload.get("result", []))
+
+    def _handle_update(self, update: dict[str, Any]) -> None:
+        message = update.get("message") or {}
+        chat = message.get("chat") or {}
+        chat_id = str(chat.get("id", ""))
+        if chat_id != str(self.settings.telegram_chat_id):
+            self.logger.warning("Ignored Telegram command from unauthorized chat_id=%s", chat_id)
+            return
+
+        text = str(message.get("text", "")).strip()
+        if not text.startswith("/"):
+            return
+
+        command = text.split()[0].split("@")[0].lower()
+        if command == "/status":
+            self.notifier.send(self.status_provider())
+        elif command in {"/help", "/start"}:
+            self.notifier.send("Commands:\n/status - show current bot status\n/help - show this help")
+        else:
+            self.notifier.send("Unknown command. Send /help for available commands.")
+
+
 @dataclass
 class Position:
     side: str

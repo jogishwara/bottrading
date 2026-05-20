@@ -136,6 +136,19 @@ Stop loss and take profit are monitored locally by the running bot. For real pro
 2026-05-12 09:27:46 | INFO | binance_futures_testnet_bot | EXIT | LONG | reason=take_profit | entry=64250.10 | exit=65535.10 | pnl=37.99 | total_trades=1 | winrate=100.00% | pnl=37.99 | drawdown=0.00%
 ```
 
+## Telegram Commands
+
+When `TELEGRAM_TOKEN` and `TELEGRAM_CHAT_ID` are configured, the bot also listens for commands from that chat:
+
+```text
+/status
+/help
+```
+
+`/status` replies with the latest cached runtime status: mode, symbol, uptime, last update time, price, signal, position, balance, leverage, margin per trade, take profit, stop loss, and performance stats.
+
+Telegram commands are handled by the running Python process. If the service is stopped or crashed, the bot cannot answer `/status`; use `sudo systemctl status crypto-bot` or `journalctl -u crypto-bot -f` on the VM in that case.
+
 ## Important Safety Notes
 
 - Never put real Binance credentials in `.env`.
