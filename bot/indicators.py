@@ -1,5 +1,3 @@
-"""Indicator helpers built with pandas and pandas-ta."""
-
 from __future__ import annotations
 
 import pandas as pd
