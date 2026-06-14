@@ -1,7 +1,5 @@
-"""Main entrypoint for the Binance Futures Testnet crypto trading bot."""
 
 from __future__ import annotations
-
 import signal
 import sys
 import time
