@@ -1,5 +1,3 @@
-"""Main entrypoint for the Binance Futures Testnet crypto trading bot."""
-
 from __future__ import annotations
 
 import signal
@@ -23,7 +21,6 @@ def request_shutdown(_signum: int, _frame: object) -> None:
 
 
 class RuntimeStatusSnapshot:
-    """Thread-safe cache used by Telegram /status without extra exchange calls."""
 
     def __init__(self) -> None:
         self.started_at = time.monotonic()
