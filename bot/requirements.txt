@@ -5,3 +5,5 @@ pandas-ta>=0.4.71b0
 python-dotenv>=1.0.1
 requests>=2.32.0
 websocket-client>=1.8.0
+fastapi>=0.111.0
+uvicorn>=0.30.0

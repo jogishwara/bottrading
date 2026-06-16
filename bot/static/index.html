@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RetroTrader 98 - Binance Futures Trading Bot</title>
+    <!-- TradingView Widget CDN -->
+    <script src="https://s3.tradingview.com/tv.js"></script>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <!-- Authentication Dialog (Login/Register) -->
+    <div id="auth-overlay" class="auth-overlay">
+        <div id="window-auth" class="win98-window shadow" style="width: 320px;">
+            <div class="win98-titlebar">
+                <div class="win98-titlebar-text">
+                    <img src="https://win98icons.alexmeub.com/icons/png/key-0.png" class="title-icon">
+                    Welcome to RetroTrader 98
+                </div>
+                <div class="win98-titlebar-controls">
+                    <button class="win98-btn-ctrl" disabled>?</button>
+                </div>
+            </div>
+            <div class="win98-window-body">
+                <p class="dialog-msg">Enter your credentials to log in or create an account.</p>
+                <div class="win98-tabs">
+                    <div class="win98-tabs-headers">
+                        <button id="tab-login" class="win98-tab-header active" onclick="switchAuthTab('login')">Log In</button>
+                        <button id="tab-register" class="win98-tab-header" onclick="switchAuthTab('register')">Sign Up</button>
+                    </div>
+                    <div class="win98-tabs-body inset-panel">
+                        <form id="auth-form" onsubmit="handleAuthSubmit(event)">
+                            <div class="form-group">
+                                <label for="auth-username">Username:</label>
+                                <input type="text" id="auth-username" required class="win98-input">
+                            </div>
+                            <div class="form-group">
+                                <label for="auth-password">Password:</label>
+                                <input type="password" id="auth-password" required class="win98-input">
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" id="auth-submit-btn" class="win98-button btn-default">OK</button>
+                                <button type="reset" class="win98-button">Reset</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main 1-Page Layout -->
+    <div id="app-container" class="app-container" style="display: none;">
+        <!-- Top App Titlebar -->
+        <div class="win98-titlebar">
+            <div class="win98-titlebar-text">
+                <img src="https://win98icons.alexmeub.com/icons/png/computer_explorer-4.png" class="title-icon">
+                RetroTrader 98 - Control Panel [User: <span id="header-username">Guest</span>]
+            </div>
+            <div class="win98-titlebar-controls">
+                <button class="win98-btn-ctrl" onclick="handleLogout()">Log Off</button>
+            </div>
+        </div>
+
+        <!-- Top Menu Bar -->
+        <div class="win98-menubar">
+            <div class="win98-menubar-item" onclick="handleLogout()">File (Log Off)</div>
+            <div class="win98-menubar-item" onclick="toggleSettingsPanel()">Settings properties</div>
+            <div class="win98-menubar-item" onclick="toggleLogsPanel()">DOS terminal logs</div>
+            <div class="win98-menubar-item" onclick="initSOLChart()">Refresh Chart</div>
+        </div>
+
+        <!-- Grid Dashboard Content -->
+        <div class="app-content-grid">
+            <!-- Left Column: Dashboard Stats & Settings -->
+            <div class="grid-left-col">
+                <!-- Dashboard Control Panel -->
+                <div class="win98-window flex-window-col">
+                    <div class="win98-window-header-bar">
+                        <span>Bot Execution & Summary</span>
+                    </div>
+                    <div class="win98-window-body">
+                        <!-- Execution Controls -->
+                        <div class="win98-fieldset">
+                            <legend>Execution Control</legend>
+                            <div class="control-row">
+                                <div class="status-indicator-panel">
+                                    <span>Status:</span>
+                                    <span id="status-badge" class="badge-stopped">STOPPED</span>
+                                    <span class="pulse-dot" id="pulse-dot"></span>
+                                </div>
+                                <button id="btn-toggle-bot" class="win98-button green-glow" onclick="toggleBot()">
+                                    Start Bot
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Statistics -->
+                        <div class="win98-fieldset" style="margin-top: 8px;">
+                            <legend>Performance Summary</legend>
+                            <table class="performance-table">
+                                <tr>
+                                    <td>Net Profit:</td>
+                                    <td id="stat-pnl" class="stat-value text-bold">0.00 USDT</td>
+                                </tr>
+                                <tr>
+                                    <td>Win Rate:</td>
+                                    <td id="stat-winrate" class="stat-value">0.00%</td>
+                                </tr>
+                                <tr>
+                                    <td>Total Trades:</td>
+                                    <td id="stat-trades" class="stat-value">0</td>
+                                </tr>
+                            </table>
+                        </div>
+
+                        <!-- Account Metrics -->
+                        <div class="win98-fieldset" style="margin-top: 8px;">
+                            <legend>Exchange Metrics</legend>
+                            <table class="performance-table">
+                                <tr>
+                                    <td>SOL Price:</td>
+                                    <td id="stat-price" class="stat-value text-blue">0.0000</td>
+                                </tr>
+                                <tr>
+                                    <td>Account Balance:</td>
+                                    <td id="stat-balance" class="stat-value">0.00 USDT</td>
+                                </tr>
+                                <tr>
+                                    <td>Uptime:</td>
+                                    <td id="stat-uptime" class="stat-value">Stopped</td>
+                                </tr>
+                            </table>
+                        </div>
+
+                        <!-- Active Position -->
+                        <div class="win98-fieldset" style="margin-top: 8px; flex: 1;">
+                            <legend>Active Position</legend>
+                            <div class="inset-panel position-panel-body" id="position-container">
+                                No active position.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings Properties Panel (Collapsible) -->
+                <div id="settings-panel" class="win98-window flex-window-col" style="margin-top: 6px;">
+                    <div class="win98-window-header-bar">
+                        <span>Trading Configurations</span>
+                    </div>
+                    <div class="win98-window-body">
+                        <form id="config-form" onsubmit="handleConfigSubmit(event)">
+                            <div class="win98-tabs">
+                                <div class="win98-tabs-headers">
+                                    <button type="button" id="tab-cfg-keys" class="win98-tab-header active" onclick="switchConfigTab('keys')">API Keys</button>
+                                    <button type="button" id="tab-cfg-strategy" class="win98-tab-header" onclick="switchConfigTab('strategy')">Strategy</button>
+                                    <button type="button" id="tab-cfg-risk" class="win98-tab-header" onclick="switchConfigTab('risk')">Risk</button>
+                                </div>
+                                <div class="win98-tabs-body inset-panel" style="height: 180px; overflow-y: auto;">
+                                    <!-- Tab: API Keys -->
+                                    <div id="panel-cfg-keys" class="tab-panel">
+                                        <div class="form-group">
+                                            <label for="cfg-exchange-env">Environment:</label>
+                                            <select id="cfg-exchange-env" class="win98-input">
+                                                <option value="demo">Binance Futures Demo (V-Account)</option>
+                                                <option value="testnet">Binance Futures Testnet (Sandbox)</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="cfg-mode">Mode:</label>
+                                            <select id="cfg-mode" class="win98-input">
+                                                <option value="paper">Paper Trading (Simulated)</option>
+                                                <option value="live">Live Trading (Exchange API)</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="cfg-api-key">API Key:</label>
+                                            <input type="text" id="cfg-api-key" class="win98-input">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="cfg-api-secret">API Secret:</label>
+                                            <input type="password" id="cfg-api-secret" class="win98-input">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="cfg-telegram-token">Telegram Token:</label>
+                                            <input type="text" id="cfg-telegram-token" class="win98-input">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="cfg-telegram-chat-id">Telegram Chat ID:</label>
+                                            <input type="text" id="cfg-telegram-chat-id" class="win98-input">
+                                        </div>
+                                    </div>
+
+                                    <!-- Tab: Strategy -->
+                                    <div id="panel-cfg-strategy" class="tab-panel" style="display: none;">
+                                        <div class="form-group">
+                                            <label for="cfg-symbol">Symbol Pair:</label>
+                                            <input type="text" id="cfg-symbol" required class="win98-input">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="cfg-timeframe">Timeframe:</label>
+                                            <select id="cfg-timeframe" class="win98-input">
+                                                <option value="1m">1 minute</option>
+                                                <option value="5m">5 minutes</option>
+                                                <option value="15m">15 minutes</option>
+                                                <option value="1h">1 hour</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="cfg-fast-ema">Fast EMA Period:</label>
+                                            <input type="number" id="cfg-fast-ema" required class="win98-input">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="cfg-slow-ema">Slow EMA Period:</label>
+                                            <input type="number" id="cfg-slow-ema" required class="win98-input">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="cfg-leverage">Leverage:</label>
+                                            <input type="number" id="cfg-leverage" required min="1" max="125" class="win98-input">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>
+                                                <input type="checkbox" id="cfg-websocket">
+                                                WebSocket Prices
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <!-- Tab: Risk -->
+                                    <div id="panel-cfg-risk" class="tab-panel" style="display: none;">
+                                        <div class="form-group">
+                                            <label for="cfg-trade-margin">Margin per Trade (USDT):</label>
+                                            <input type="number" step="0.1" id="cfg-trade-margin" class="win98-input">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="cfg-risk-per-trade">Risk per Trade (%):</label>
+                                            <input type="number" step="0.01" id="cfg-risk-per-trade" class="win98-input">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="cfg-stop-loss">Stop Loss (%):</label>
+                                            <input type="number" step="0.001" id="cfg-stop-loss" class="win98-input">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="cfg-take-profit">Take Profit (%):</label>
+                                            <input type="number" step="0.001" id="cfg-take-profit" class="win98-input">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="cfg-max-daily-loss">Max Daily Loss (%):</label>
+                                            <input type="number" step="0.01" id="cfg-max-daily-loss" class="win98-input">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="cfg-cooldown">Cooldown (Seconds):</label>
+                                            <input type="number" id="cfg-cooldown" class="win98-input">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="cfg-paper-balance">Simulated Balance (USDT):</label>
+                                            <input type="number" id="cfg-paper-balance" class="win98-input">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-actions" style="margin-top: 6px;">
+                                <button type="submit" class="win98-button btn-default">Save Settings</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Technical Indicators Window -->
+                <div class="win98-window flex-window-col" style="margin-top: 6px; flex: 1;">
+                    <div class="win98-window-header-bar">
+                        <span>Technical Indicators Diagnostic</span>
+                    </div>
+                    <div class="win98-window-body" style="padding: 4px;">
+                        <div class="inset-panel" style="height: 100%; background-color: #ffffff; padding: 4px; overflow-y: auto;">
+                            <table class="win98-table" style="font-size: 11px;">
+                                <thead>
+                                    <tr>
+                                        <th>Indicator</th>
+                                        <th>Value</th>
+                                        <th>Bias</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Fast EMA (<span id="ind-fast-period">9</span>)</td>
+                                        <td id="ind-fast-val" class="text-bold">0.00</td>
+                                        <td id="ind-fast-bias">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Slow EMA (<span id="ind-slow-period">21</span>)</td>
+                                        <td id="ind-slow-val" class="text-bold">0.00</td>
+                                        <td id="ind-slow-bias">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td>EMA Cross</td>
+                                        <td id="ind-emacross-val" class="text-bold">-</td>
+                                        <td id="ind-emacross-bias">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td>RSI (14)</td>
+                                        <td id="ind-rsi-val" class="text-bold">0.00</td>
+                                        <td id="ind-rsi-bias">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td>MACD (12,26)</td>
+                                        <td id="ind-macd-val" class="text-bold">0.00</td>
+                                        <td id="ind-macd-bias">-</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Chart & Logs -->
+            <div class="grid-right-col">
+                <!-- Realtime Candlestick Chart Window -->
+                <div class="win98-window flex-window-col" style="flex: 3;">
+                    <div class="win98-window-header-bar">
+                        <span>Realtime Candlestick Stream</span>
+                    </div>
+                    <div class="win98-window-body" style="padding: 0; background-color: #000;">
+                        <div id="chart-container" class="chart-canvas-container" style="height: 100%; width: 100%;">
+                            <!-- TradingView Widget -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DOS Terminal Logs Window (Collapsible) -->
+                <div id="logs-panel" class="win98-window flex-window-col" style="flex: 2; margin-top: 6px;">
+                    <div class="win98-window-header-bar">
+                        <span>MS-DOS Logs Prompt</span>
+                    </div>
+                    <div class="win98-menubar">
+                        <div class="win98-menubar-item" onclick="clearLogs()">Clear Screen</div>
+                        <div class="win98-menubar-item" onclick="downloadLogs()">Save Log File</div>
+                    </div>
+                    <div class="win98-window-body msdos-body" style="padding: 0;">
+                        <div id="terminal-screen" class="msdos-screen" style="height: 100%; border: none;">
+                            Microsoft(R) Windows 98<br>
+                            (C)Copyright Microsoft Corp 1981-1998.<br><br>
+                            C:\RETROTRADER_BOT&gt; tail -f user_bot.log<br>
+                            <div id="terminal-content">Waiting for log records...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Trade Logs Window -->
+                <div class="win98-window flex-window-col" style="flex: 1.5; margin-top: 6px;">
+                    <div class="win98-window-header-bar">
+                        <span>Recent Closed Trades Log</span>
+                    </div>
+                    <div class="win98-window-body" style="padding: 4px;">
+                        <div class="inset-panel table-scroll-container" style="height: 100%;">
+                            <table class="win98-table">
+                                <thead>
+                                    <tr>
+                                        <th>Symbol</th>
+                                        <th>Side</th>
+                                        <th>Entry Price</th>
+                                        <th>Exit Price</th>
+                                        <th>Amount</th>
+                                        <th>Net PnL</th>
+                                        <th>Reason</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="trades-table-body">
+                                    <tr>
+                                        <td colspan="7" class="text-center">No trades logged yet.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom status bar -->
+        <div class="win98-statusbar" style="margin-top: 4px;">
+            <div class="win98-statusbar-panel" id="status-bar-symbol">Symbol: -</div>
+            <div class="win98-statusbar-panel" id="status-bar-signal">Signal: HOLD</div>
+            <div class="win98-statusbar-panel" id="status-bar-updated">Last Updated: -</div>
+        </div>
+    </div>
+    
+    <!-- App Javascript Logic -->
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

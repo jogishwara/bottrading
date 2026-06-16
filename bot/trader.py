@@ -310,10 +310,12 @@ class Trader:
         settings: Settings,
         logger: logging.Logger,
         notifier: TelegramNotifier,
+        on_trade_recorded: Callable[[TradeRecord], None] | None = None,
     ):
         self.settings = settings
         self.logger = logger
         self.notifier = notifier
+        self.on_trade_recorded = on_trade_recorded
         self.exchange: ccxt.binance | None = None
         self.paper_position: Position | None = None
         self.paper_balance = settings.paper_initial_balance
@@ -589,6 +591,11 @@ class Trader:
             closed_at=datetime.now(timezone.utc),
         )
         self.stats.record_trade(trade)
+        if self.on_trade_recorded:
+            try:
+                self.on_trade_recorded(trade)
+            except Exception as exc:
+                self.logger.error("Failed to execute on_trade_recorded callback: %s", exc)
         self.last_trade_ts = time.time()
 
         message = (
